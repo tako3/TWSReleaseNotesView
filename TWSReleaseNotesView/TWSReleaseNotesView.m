@@ -27,6 +27,7 @@
 @end
 
 static NSString *const kTWSReleaseNotesViewVersionKey = @"com.tapwings.open.kTWSReleaseNotesViewControllerVersionKey";
+static NSString *const kReviewTitle = @"レビューする";
 static const CGFloat kTWSReleaseNotesViewDefaultOverlayAlpha = 0.5f;
 static const CGFloat kTWSReleaseNotesViewDefaultTextViewBackgroundAlpha = 0.8f;
 static const CGFloat kTWSReleaseNotesViewContainerViewCornerRadius = 3.0f;
@@ -54,6 +55,9 @@ static const NSTimeInterval kTWSReleaseNotesViewTransitionDuration = 0.2f;
 @property (strong, nonatomic) UILabel *titleLabel;
 @property (strong, nonatomic) TWSUnselectableTextView *textView;
 @property (strong, nonatomic) UIButton *closeButton;
+@property (strong, nonatomic) UIButton *reviewButton;
+@property (strong, nonatomic) void(^closeButtonBlock)(void);
+@property (strong, nonatomic) void(^reviewButtonBlock)(void);
 
 - (id)initWithReleaseNotesTitle:(NSString *)releaseNotesTitle text:(NSString *)releaseNotesText closeButtonTitle:(NSString *)closeButtonTitle;
 - (void)setupSubviews;
@@ -144,6 +148,15 @@ static const NSTimeInterval kTWSReleaseNotesViewTransitionDuration = 0.2f;
 {
     // Setup release controller
     TWSReleaseNotesView *releaseNotesView = [[TWSReleaseNotesView alloc] initWithReleaseNotesTitle:releaseNotesTitle text:releaseNotesText closeButtonTitle:closeButtonTitle];
+    return releaseNotesView;
+}
+
++ (TWSReleaseNotesView *)viewWithReleaseNotesTitle:(NSString *)releaseNotesTitle text:(NSString *)releaseNotesText closeButtonTitle:(NSString *)closeButtonTitle closeButtonHandler:(void (^)(void))closeButtonBlock reviewButtonHandler:(void (^)(void))reviewButtonBlock
+{
+    // Setup release controller
+    TWSReleaseNotesView *releaseNotesView = [[TWSReleaseNotesView alloc] initWithReleaseNotesTitle:releaseNotesTitle text:releaseNotesText closeButtonTitle:closeButtonTitle];
+    releaseNotesView.closeButtonBlock = closeButtonBlock;
+    releaseNotesView.reviewButtonBlock = reviewButtonBlock;
     return releaseNotesView;
 }
 
@@ -292,6 +305,16 @@ static const NSTimeInterval kTWSReleaseNotesViewTransitionDuration = 0.2f;
     [_closeButton addTarget:self action:@selector(closeButtonDragExit:) forControlEvents:UIControlEventTouchDragExit];
     [_closeButton addTarget:self action:@selector(closeButtonDragEnter:) forControlEvents:UIControlEventTouchDragEnter];
     [_popupView addSubview:_closeButton];
+    
+    // Review button
+    _reviewButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [_reviewButton setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin];
+    [_reviewButton setTitle:(kReviewTitle) forState:UIControlStateNormal];
+    [_reviewButton addTarget:self action:@selector(reviewButtonTouchedUp:) forControlEvents:UIControlEventTouchUpInside];
+    [_reviewButton addTarget:self action:@selector(reviewButtonTouchedDown:) forControlEvents:UIControlEventTouchDown];
+    [_reviewButton addTarget:self action:@selector(reviewButtonDragExit:) forControlEvents:UIControlEventTouchDragExit];
+    [_reviewButton addTarget:self action:@selector(reviewButtonDragEnter:) forControlEvents:UIControlEventTouchDragEnter];
+    [_popupView addSubview:_reviewButton];
 }
 
 - (void)updateSubviewsLayoutInContainerView:(UIView *)containerView
@@ -347,7 +370,16 @@ static const NSTimeInterval kTWSReleaseNotesViewTransitionDuration = 0.2f;
     CGRect closeButtonFrame = self.textContainerView.frame;
     closeButtonFrame.origin.y = CGRectGetMaxY(closeButtonFrame) - kTWSReleaseNotesViewButtonBoxHeight;
     closeButtonFrame.size.height = kTWSReleaseNotesViewButtonBoxHeight;
+    closeButtonFrame.size.width = self.textContainerView.frame.size.width / 2;
     [self.closeButton setFrame:closeButtonFrame];
+    
+    // Review button
+    CGRect reviewButtonFrame = self.textContainerView.frame;
+    reviewButtonFrame.origin.y = CGRectGetMaxY(reviewButtonFrame) - kTWSReleaseNotesViewButtonBoxHeight;
+    reviewButtonFrame.origin.x =  self.textContainerView.frame.size.width / 2;
+    reviewButtonFrame.size.height = kTWSReleaseNotesViewButtonBoxHeight;
+    reviewButtonFrame.size.width = self.textContainerView.frame.size.width / 2;
+    [self.reviewButton setFrame:reviewButtonFrame];
 }
 
 - (void)prepareToShowInView:(UIView *)containerView
@@ -450,6 +482,34 @@ static const NSTimeInterval kTWSReleaseNotesViewTransitionDuration = 0.2f;
     [self.closeButton setBackgroundColor:[UIColor colorWithRed:0.0f green:0.0f blue:0.0f alpha:0.5f]];
 }
 
+- (void)reviewButtonTouchedUp:(id)sender
+{
+    // Un-highlight button on touch up
+    [self.reviewButton setBackgroundColor:[UIColor clearColor]];
+    if (_reviewButtonBlock) {
+        _reviewButtonBlock();
+    }
+    [self removeFromSuperview];
+}
+
+- (void)reviewButtonTouchedDown:(id)sender
+{
+    // Highlight button on touch down
+    [self.reviewButton setBackgroundColor:[UIColor colorWithRed:0.0f green:0.0f blue:0.0f alpha:0.5f]];
+}
+
+- (void)reviewButtonDragExit:(id)sender
+{
+    // Un-highlight button on exit
+    [self.reviewButton setBackgroundColor:[UIColor clearColor]];
+}
+
+- (void)reviewButtonDragEnter:(id)sender
+{
+    // Highlight button on enter
+    [self.reviewButton setBackgroundColor:[UIColor colorWithRed:0.0f green:0.0f blue:0.0f alpha:0.5f]];
+}
+
 - (void)dismiss
 {
     // Dismiss release notes view
@@ -462,7 +522,10 @@ static const NSTimeInterval kTWSReleaseNotesViewTransitionDuration = 0.2f;
                 [self setBackgroundColor:[UIColor colorWithRed:0.0f green:0.0f blue:0.0f alpha:0.0f]];
                 [self.popupView setAlpha:0.0f];
                 [self.popupView setTransform:CGAffineTransformScale(CGAffineTransformIdentity, 0.0f, 0.0f)];
-            } completion:^(BOOL finished){
+            } completion:^(BOOL finished) {
+                if (_closeButtonBlock) {
+                    _closeButtonBlock();
+                }
                 if (finished)
                 {
                     [self removeFromSuperview];

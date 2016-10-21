@@ -100,6 +100,17 @@
 + (TWSReleaseNotesView *)viewWithReleaseNotesTitle:(NSString *)releaseNotesTitle text:(NSString *)releaseNotesText closeButtonTitle:(NSString *)closeButtonTitle;
 
 /**
+ Returns a release notes view initialized with custom parameters.
+ @param releaseNotesTitle The title for the release notes view.
+ @param releaseNotesText The release notes text.
+ @param closeButtonTitle The title for the close button.
+ @param closeButtonBlock Close button tap handler block.
+ @param reviewButtonBlock Review button tap handler block.
+ @return The initialized release notes view.
+ */
++ (TWSReleaseNotesView *)viewWithReleaseNotesTitle:(NSString *)releaseNotesTitle text:(NSString *)releaseNotesText closeButtonTitle:(NSString *)closeButtonTitle closeButtonHandler:(void (^)(void))closeButtonBlock reviewButtonHandler:(void (^)(void))reviewButtonBlock;
+
+/**
  Creates a release notes view initialized with custom parameters and returns it in the completion block.
  @param appIdentifier The App Store app identifier for remote release notes retrieval.
  @param releaseNotesTitle The title for the release notes view.
